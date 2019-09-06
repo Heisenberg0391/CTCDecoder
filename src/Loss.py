@@ -7,6 +7,16 @@ import Common
 
 
 def recLabelingProb(t, s, mat, labelingWithBlanks, blank, cache):
+    """
+
+    :param t:
+    :param s:
+    :param mat:
+    :param labelingWithBlanks:
+    :param blank:
+    :param cache:
+    :return:
+    """
     "recursively compute probability of labeling, save results of sub-problems in cache to avoid recalculating them"
 
     # check index of labeling
@@ -49,16 +59,23 @@ def emptyCache(maxT, labelingWithBlanks):
 
 
 def ctcLabelingProb(mat, gt, classes):
+    """
+
+    :param mat: 时序softmax矩阵
+    :param gt: 正确标注
+    :param classes: 类别字典
+    :return:
+    """
     "calculate probability p(gt|mat) of a given labeling gt and a matrix mat according to section 'The CTC Forward-Backward Algorithm' in Graves paper"
     maxT, _ = mat.shape # size of input matrix
     blank = len(classes) # 空白符索引
-    # 因为没法穷举所有可能的正确raw序列，
-    # 因此CTC认为设定带空白符的ground truth序列是真实标注序列每两个字符之间插一个空白符，然后首尾各加一个空白符
-    # CTC希望的是模型学出来的最优输出就是每两个字符之间插一个空白符
+    # 创建动态规划所需的时序状态转移图：真实标注序列每两个字符之间插一个空白符，然后首尾各加一个空白符
+    # 根据这个时序状态转移图可以利用前向算法求出所有合法路径的概率和
     labelingWithBlanks = Common.extendByBlanks(Common.wordToLabelSeq(gt, classes), blank)
     # 构建动态规划表避免重复计算前缀的概率
     cache = emptyCache(maxT, labelingWithBlanks)  # 时序状态转移矩阵，用于计算前向算法
-    # p(l|x) = α(T;U') + α(T;U'-1)
+    # 最终时刻T得到的总概率是路径以空白符或最终有效字符结尾的概率和p(l|x) = α(T;U') + α(T;U'-1)
+    # 而路径概率是可以通过动态规划递归求解的
     prob = recLabelingProb(maxT-1, len(labelingWithBlanks)-1, mat, labelingWithBlanks, blank, cache) + recLabelingProb(maxT-1, len(labelingWithBlanks)-2, mat, labelingWithBlanks, blank, cache)
     return prob
 
